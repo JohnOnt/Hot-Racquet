@@ -20,7 +20,7 @@ def get_player_points(player, matches, points):
 # Streak Distribution Functions
 #--------------------------------------------------------------------
 
-def simulated_iid_series(x,nsims=10000,kmax = 40):
+def simulated_iid_series(x,nsims=10,kmax = 40):
     # calculate the number of streaks of a given length for an IDD series with P_M = mean of input series
     tmake = []
     tmiss = []
@@ -40,6 +40,10 @@ def simulated_iid_series(x,nsims=10000,kmax = 40):
 
 def test_streak_distribution_hypothesis(counts,mu,sig,null_only=False):
     # takes input from find_streak_distributions and simulated_series
+    if np.sum(counts) == 0:
+        # Player has no counts of streaks so must return NA values
+        return np.nan, np.nan, np.nan
+
     kmax = np.max(np.nonzero(counts))+1
     chi2 = np.sum((counts[:kmax]-mu[:kmax])**2/sig[:kmax]**2)
     pval = 1-stats.chi2.cdf(chi2,kmax-1)
@@ -124,6 +128,26 @@ def streakify_unferr(points1, points2):
         
     return np.array(outcomes)
 
+def streakify_serves(points1, points2):
+    # Subset to points where player is serving
+    points1 = points1[points1.PointServer == 1]
+    points2 = points2[points2.PointServer == 2]
+
+    outcomes = []
+
+    for i in range(np.shape(points1)[0]):
+        if points1.iloc[i].P1Ace == 1:
+            outcomes.append(1)
+        else:
+            outcomes.append(0)
+
+    for i in range(np.shape(points2)[0]):
+        if points2.iloc[i].P2Ace == 1:
+            outcomes.append(1)
+        else:
+            outcomes.append(0)
+        
+    return np.array(outcomes)
 
 #--------------------------------------------------------------------
 # a
@@ -151,7 +175,7 @@ for player in tqdm(players):
             # Go through tournament players only in the top 100 (avoids NaN values)
             if player in tour_players:
                 points1, points2 = get_player_points(player, matches, points)
-                outcomes = np.append(outcomes, streakify_points(points1, points2))
+                outcomes = np.append(outcomes, streakify_serves(points1, points2))
             
             # Player not in this tour so pass
             else:
@@ -167,4 +191,4 @@ for player in tqdm(players):
 
 
 # player_stats = player_stats.reset_index()
-player_stats.to_csv('streaks_points.csv', index=False)
+player_stats.to_csv('streaks_serves.csv', index=False)
