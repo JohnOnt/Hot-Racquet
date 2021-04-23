@@ -16,6 +16,43 @@ def get_player_points(player, matches, points):
 
     return player_points1, player_points2
 
+def get_player_points2(player, matches, points, rankings):
+    # Get all match numbers
+    match_ids1 = matches[(matches['player1'] == player)].match_id
+    match_ids2 = matches[(matches['player2'] == player)].match_id
+
+    player_points1 = []
+    player_points2 = []
+
+    for m_id in match_ids1:
+        # Check if player they are playing against has an elo
+        p2 = matches.player2.values[matches.match_id == m_id][0]
+        if (p2 in (rankings.name.values)) == False:
+            # Dont add to list
+            continue
+        player_points1.append(points[points.match_id == m_id])
+
+    for m_id in match_ids2:
+        # Check if player they are playing against has an elo
+        p1 = matches.player1.values[matches.match_id == m_id][0]
+        if (p1 in (rankings.name.values)) == False:
+            # Dont add to list
+            continue
+        player_points2.append(points[points.match_id == m_id])
+
+    return player_points1, player_points2
+
+def get_metadata(match, matches, rankings):
+    m_id = match.iloc[0].match_id
+    p1 = matches.player1.values[matches.match_id == m_id][0]
+    p2 = matches.player2.values[matches.match_id == m_id][0]
+
+    elo1 = rankings.points[rankings.name == p1].values[0]
+    elo2 = rankings.points[rankings.name == p2].values[0]
+
+    return elo1, elo2
+    
+
 #--------------------------------------------------------------------
 # Streak Distribution Functions
 #--------------------------------------------------------------------
@@ -100,6 +137,18 @@ def streakify_points(points1, points2):
         
     return np.array(outcomes)
 
+def streakify_points2(points):
+    outcomes = []
+
+    for i in range(np.shape(points1)[0]):
+        whosPoint = points1.iloc[i].PointWinner
+        if whosPoint == 1:
+            outcomes.append(1)
+        else:
+            outcomes.append(0)
+
+    return np.array(outcomes)
+
 def streakify_unferr(points1, points2):
     # Subset points to where at least a return was made
     points1 = points1[(points1.P1DoubleFault != 1) & (points1.P2DoubleFault != 1)]
@@ -154,8 +203,10 @@ def streakify_serves(points1, points2):
 #--------------------------------------------------------------------
 
 # Import ATP Mens top 100
-matchups100 = pd.read_csv('matchups_atp100.csv')
-players = matchups100.columns[1:]
+# matchups100 = pd.read_csv('matchups_atp100.csv')
+rankings = pd.read_csv('Elo_Rankings2017.csv')
+# players = matchups100.columns[1:]
+players = ['Roger Federer', 'Rafael Nadal']
 
 colnames = ['Player', 'kmax','chi2','p-val']
 player_stats = pd.DataFrame(0, index = players, columns=colnames)
@@ -164,18 +215,36 @@ tours = ['ausopen', 'frenchopen', 'usopen', 'wimbledon']
 
 
 for player in tqdm(players):
-    outcomes = np.array([])
+    outcomes = np.array([[]])
+    metadata = []
     for year in np.arange(2014, 2018):
         for tour in tours:
             matches = pd.read_csv('tennis_data/' + str(year) + '-' + tour + '-matches.csv')
             points = pd.read_csv('tennis_data/' + str(year) + '-' + tour + '-points.csv')
 
+            # Establish the surface
+            if tour == 'wimbledon':
+                court = 1 #'grass'
+            elif tour == 'frenchopen':
+                court = 2 # 'clay'
+            else:
+                court = 3 # 'hard'
+
             tour_players = list(set(np.append(matches.player1.values, matches.player2.values)))
 
             # Go through tournament players only in the top 100 (avoids NaN values)
             if player in tour_players:
-                points1, points2 = get_player_points(player, matches, points)
-                outcomes = np.append(outcomes, streakify_serves(points1, points2))
+
+                # these are lists now
+                points1, points2 = get_player_points2(player, matches, points, rankings)
+
+                for match in points1:
+                    outcomes = np.append(outcomes, streakify_points2(match), axis=1)
+                    # Need elo of both players and court
+                    elo1, elo2 = get_metadata(match, matches, rankings)
+                    metadata.append([elo1, elo2, court])
+
+                outcomes = np.append(outcomes, streakify_points(points1, points2))
             
             # Player not in this tour so pass
             else:
@@ -191,4 +260,4 @@ for player in tqdm(players):
 
 
 # player_stats = player_stats.reset_index()
-player_stats.to_csv('streaks_serves.csv', index=False)
+# player_stats.to_csv('streaks_serves.csv', index=False)
