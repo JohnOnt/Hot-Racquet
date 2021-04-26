@@ -125,11 +125,12 @@ def simulated_iid_series2(metadata1, metadata2, nsims=1000,kmax = 40):
     #mu_make = np.mean(tmake,axis=0)
     # Averaged not counting the different matches
     mu_make = np.sum(tmake, axis=0) / nsims
+    mu_miss = np.sum(tmiss, axis=0) / nsims
     # also adjusted standard deviation
-    sig_make = np.std(tmake,axis=0) * np.sqrt(np.shape(metadata1)[0] + np.shape(metadata2)[0])
+    Nmatches = (np.shape(metadata1)[0] + np.shape(metadata2)[0])
+    sig_make = np.std(tmake,axis=0) * Nmatches
+    sig_miss = np.std(tmiss,axis=0) * Nmatches
 
-    mu_miss = np.mean(tmiss,axis=0)
-    sig_miss = np.std(tmiss,axis=0)
     return mu_make,sig_make,mu_miss,sig_miss
 
 def test_streak_distribution_hypothesis(counts,mu,sig,null_only=False):
@@ -214,8 +215,8 @@ def streakify_points2(points, px):
 # matchups100 = pd.read_csv('matchups_atp100.csv')
 rankings = pd.read_csv('Elo_Rankings2017.csv')
 # players = matchups100.columns[1:]
-#players = ['Roger Federer', 'Rafael Nadal']
-players = rankings.name[:101] #[:10]
+players = ['Roger Federer']#, 'Rafael Nadal']
+# players = rankings.name[:101] #[:10]
 
 colnames = ['Player', 'kmax','chi2','p-val']
 player_stats = pd.DataFrame(0, index = players, columns=colnames)
@@ -270,10 +271,21 @@ for player in tqdm(players):
     mu_make,std_make,mu_miss,std_miss = simulated_iid_series2(metadata1, metadata2, kmax=15)
     kmax, chi2, pval = test_streak_distribution_hypothesis(make,mu_make,std_make)
 
+    if player == 'Roger Federer':
+        mu = mu_make
+        sig = std_make
+        counts = make
+        federer_data = {'mu': mu_make,
+                        'sig': std_make,
+                        'counts': make,
+                        'kmax': kmax}
+        
+        pickle.dump(federer_data, open('federer_data.sav', 'wb'))
+
 
     player_stats.loc[player] = [player, kmax, chi2, pval]
 
 
 print(player_stats)
-player_stats = player_stats.reset_index()
-player_stats.to_csv('streaks_points.csv', index=False)
+#player_stats = player_stats.reset_index()
+#player_stats.to_csv('streaks_points.csv', index=False)
