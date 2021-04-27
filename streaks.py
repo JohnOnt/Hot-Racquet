@@ -122,7 +122,6 @@ def simulated_iid_series2(metadata1, metadata2, nsims=1000,kmax = 40):
 
     tmiss = np.array(tmiss)
     tmake = np.array(tmake)
-    #mu_make = np.mean(tmake,axis=0)
     # Averaged not counting the different matches
     mu_make = np.sum(tmake, axis=0) / nsims
     mu_miss = np.sum(tmiss, axis=0) / nsims
@@ -139,7 +138,7 @@ def test_streak_distribution_hypothesis(counts,mu,sig,null_only=False):
         # Player has no counts of streaks so must return NA values
         return np.nan, np.nan, np.nan
 
-    kmax = np.max(np.nonzero(counts))+1
+    kmax = 15 # np.max(np.nonzero(counts))+1
     chi2 = np.sum((counts[:kmax]-mu[:kmax])**2/sig[:kmax]**2)
     pval = 1-stats.chi2.cdf(chi2,kmax-1)
 
@@ -208,20 +207,21 @@ def streakify_points2(points, px):
 
 
 #--------------------------------------------------------------------
-# a
+# Main Part
 #--------------------------------------------------------------------
 
 # Import ATP Mens top 100
 # matchups100 = pd.read_csv('matchups_atp100.csv')
 rankings = pd.read_csv('Elo_Rankings2017.csv')
 # players = matchups100.columns[1:]
-players = ['Roger Federer']#, 'Rafael Nadal']
+players = ['Roger Federer']
 # players = rankings.name[:101] #[:10]
 
 colnames = ['Player', 'kmax','chi2','p-val']
 player_stats = pd.DataFrame(0, index = players, columns=colnames)
 
-tours = ['ausopen', 'frenchopen', 'usopen', 'wimbledon']
+# tours = ['ausopen', 'frenchopen', 'usopen', 'wimbledon']
+tours = ['ausopen', 'usopen']
 
 # add tqdm later
 for player in tqdm(players):
